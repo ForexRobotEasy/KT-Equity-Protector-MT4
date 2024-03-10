@@ -1,0 +1,107 @@
+
+// KT Equity Protector MT4
+// Developer: Forex Robot Easy Team
+// Developer's site: forexroboteasy.com
+
+// Include necessary libraries
+#include <Trade\Trade.mqh>
+#include <Trade\PositionInfo.mqh>
+
+// Define stop loss and profit target levels
+double stopLossLevel = -1000.0; // Account equity level for stop loss
+double profitTargetLevel = 1000.0; // Account equity level for profit target
+bool isStopLossTriggered = false; // Flag to track if stop loss is triggered
+bool isProfitTargetReached = false; // Flag to track if profit target is reached
+
+// Create an instance of the trade class
+CTrade trade;
+
+// Function to close all market and pending orders
+void CloseAllOrders()
+{
+    CPositionInfo position; // Create an instance of the position class
+    long totalPositions = position.Total(); // Get the total number of open positions
+    
+    for (int i = 0; i < totalPositions; i++)
+    {
+        if (position.SelectByIndex(i)) // Select each position
+        {
+            trade.PositionClose(position.Ticket()); // Close the selected position
+        }
+    }
+}
+
+// Function to shut all open charts
+void ShutOpenCharts()
+{
+    int totalCharts = ChartGetInteger(0, CHART_TOTAL); // Get the total number of open charts
+    
+    for (int i = 0; i < totalCharts; i++)
+    {
+        int chartId = ChartNext(i); // Get the chart ID
+        ChartClose(chartId); // Close the chart
+    }
+}
+
+// Function to monitor account equity and take action
+void MonitorAccountEquity()
+{
+    double accountEquity = AccountInfoDouble(ACCOUNT_EQUITY); // Get the current account equity
+    
+    // Check if account equity reaches stop loss level
+    if (accountEquity <= stopLossLevel)
+    {
+        isStopLossTriggered = true; // Set the stop loss flag
+        CloseAllOrders(); // Close all orders
+        ShutOpenCharts(); // Shut all open charts
+    }
+    
+    // Check if account equity reaches profit target level
+    if (accountEquity >= profitTargetLevel)
+    {
+        isProfitTargetReached = true; // Set the profit target flag
+        CloseAllOrders(); // Close all orders
+        ShutOpenCharts(); // Shut all open charts
+    }
+}
+
+// The OnTick event handler
+void OnTick()
+{
+    if (!isStopLossTriggered && !isProfitTargetReached)
+    {
+        MonitorAccountEquity(); // Monitor account equity and take action
+    }
+}
+
+// The OnInit event handler
+void OnInit()
+{
+    // Initialize the trade class
+    trade.SetExpertMagicNumber(123456); // Set the expert magic number
+    
+    // Set trade parameters
+    trade.SetDeviationInPoints(10); // Set deviation in points
+    trade.SetTypeFilling(ORDER_FILLING_RETURN); // Set order filling type
+    trade.SetTypeTrade(ORDER_TYPE_MARKET); // Set order type
+    trade.SetTypeTime(GOOD_TILL_CANCELLED); // Set order time type
+    trade.SetSlippage(3); // Set maximum allowed slippage
+}
+
+// The OnDeinit event handler
+void OnDeinit(const int reason)
+{
+    // Print a message when the program is stopped
+    Print('KT Equity Protector MT4 stopped due to reason:', reason);
+}
+
+// The OnStart event handler
+void OnStart()
+{
+    // Run the program indefinitely
+    while (!IsStopped())
+    {
+        OnTick(); // Call the OnTick event handler
+        Sleep(1000); // Delay for 1 second
+    }
+}
